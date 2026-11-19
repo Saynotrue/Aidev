@@ -104,7 +104,7 @@ export async function structureAll(benefits, { root, concurrency = 2, limit = In
 
   const base = llmConfig();
   const config = { ...base, models: base.collectModels, model: base.collectModels[0] };
-  let called = 0; let reused = 0; let failed = 0;
+  let called = 0; let reused = 0; let failed = 0; let done = 0;
   const t0 = Date.now();
   const todo = benefits.filter((b) => cache[b.id]?.key !== hash(`${PROMPT_VERSION}|${config.model}|${userPrompt(b)}`)).length;
   log(`  캐시 재사용 가능 ${benefits.length - todo}건, 새로 구조화할 대상 ${todo}건 중 이번에 최대 ${Number.isFinite(limit) ? limit : todo}건 호출 (동시 ${concurrency}건)`);
@@ -118,11 +118,12 @@ export async function structureAll(benefits, { root, concurrency = 2, limit = In
         config, system: SYSTEM, user: userPrompt(b), schema: SCHEMA,
       });
       cache[b.id] = { key, data };
-      if (called === 1 || called % 5 === 0) {
+      done += 1; // 동시에 여러 건이 돌므로 '끝난 건수' 기준으로 기록한다
+      if (done === 1 || done % 5 === 0) {
         const sec = Math.round((Date.now() - t0) / 1000);
-        log(`  구조화 진행: ${called}건 호출, 경과 ${sec}초 (${i + 1}/${benefits.length})`);
+        log(`  구조화 진행: ${done}건 완료, 경과 ${sec}초 (${i + 1}/${benefits.length})`);
       }
-      if (called % 20 === 0) {
+      if (done % 5 === 0) { // 중간 저장: 취소·시간 초과돼도 결과를 잃지 않도록
         await mkdir(path.dirname(cacheFile), { recursive: true });
         await writeFile(cacheFile, JSON.stringify(cache)); // 중간에 끊겨도 결과를 잃지 않도록
       }

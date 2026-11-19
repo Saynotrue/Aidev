@@ -17,7 +17,7 @@ on:
     inputs:
       llm_limit:
         description: '이번 실행에서 새로 LLM 구조화할 최대 건수 (이미 구조화한 항목은 캐시 재사용)'
-        default: '100'
+        default: '500'
       no_llm:
         description: 'LLM 구조화 없이 수집만 하기'
         type: boolean
@@ -36,7 +36,10 @@ jobs:
     timeout-minutes: 90
     env:
       TZ: Asia/Seoul # 수집일·마감 판단을 한국 날짜 기준으로 (todayString은 서버 시간대를 씀)
-      LLM_LIMIT: ${{ inputs.llm_limit || '100' }}
+      LLM_LIMIT: ${{ inputs.llm_limit || '500' }}
+      # 수집 단계 모델: 실측(2026-11-19) glm-5.3-flash는 짧은 문장에도 40초 이상 걸려 60초 제한에 계속 걸렸다.
+      # nemotron은 0.4초. 빠른 모델을 먼저 쓰고, 실패하면 glm으로 넘어간다 (lib/llm.js).
+      NVIDIA_MODEL_COLLECT: nvidia/nemotron-3.5-lightning-30b-a3b,z-ai/glm-5.3-flash
     steps:
       - uses: actions/checkout@v4
 
