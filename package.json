@@ -1,8 +1,8 @@
 {
-  "name": "hyetaek-radar",
+  "name": "badeuljido",
   "version": "0.1.0",
   "private": true,
-  "description": "혜택레이더(가칭): AI 기반 청년·대학생 맞춤 정부지원금 추천 서비스",
+  "description": "받을지도: AI 기반 청년·대학생 맞춤 정부지원금 추천 서비스",
   "type": "module",
   "engines": { "node": ">=20.12" },
   "scripts": {

@@ -8,7 +8,7 @@ export const STUDENT_STATUSES = ['재학', '휴학', '졸업', '해당 없음'];
 export const HOUSEHOLD_OPTIONS = ['1인 가구', '월세 거주', '무주택', '구직 중'];
 
 export const STATUS = { OK: 'ok', CHECK: 'check', FAIL: 'fail' };
-export const STATUS_LABEL = { ok: '✅ 충족', check: '⚠️ 확인 필요', fail: '❌ 미충족' };
+export const STATUS_LABEL = { ok: '충족', check: '확인 필요', fail: '미충족' }; // 아이콘은 화면(main.js)에서 붙인다
 
 // R-1: 이 조건이 '미충족'이면 결과에서 제외한다. 나머지 조건은 표시만 한다.
 export const HARD_FILTER_KEYS = ['deadline', 'age', 'region', 'student_status'];

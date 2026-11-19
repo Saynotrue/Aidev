@@ -20,9 +20,12 @@ const MIME = {
   '.json': 'application/json; charset=utf-8',
   '.svg': 'image/svg+xml',
   '.ico': 'image/x-icon',
+  '.png': 'image/png',
+  '.webmanifest': 'application/manifest+json; charset=utf-8',
 };
 // 브라우저에 공개할 경로만 허용한다 (.env, scripts/, lib/, data/raw 등은 제공하지 않음)
-const PUBLIC = [/^\/index\.html$/, /^\/css\/[\w.-]+\.css$/, /^\/js\/[\w.-]+\.js$/, /^\/data\/benefits(\.sample)?\.json$/];
+const PUBLIC = [/^\/index\.html$/, /^\/css\/[\w.-]+\.css$/, /^\/js\/[\w.-]+\.js$/, /^\/data\/benefits(\.sample)?\.json$/,
+  /^\/favicon\.ico$/, /^\/manifest\.webmanifest$/, /^\/icons\/[\w.-]+\.(svg|png)$/];
 
 function send(res, status, body, type = 'application/json; charset=utf-8') {
   res.writeHead(status, { 'content-type': type, 'cache-control': 'no-store' });
@@ -63,6 +66,6 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`혜택레이더 개발 서버: http://localhost:${PORT}`);
+  console.log(`받을지도 개발 서버: http://localhost:${PORT}`);
   if (!process.env.NVIDIA_API_KEY) console.log('  (NVIDIA_API_KEY 없음: AI 기능 없이 규칙 기반으로만 동작합니다)');
 });

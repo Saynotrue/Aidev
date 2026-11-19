@@ -1,0 +1,15 @@
+{
+  "name": "받을지도 - 청년 지원금·장학금 찾기",
+  "short_name": "받을지도",
+  "description": "조건만 입력하면 흩어진 청년 지원금과 장학금을 한 번에 찾아 드려요.",
+  "lang": "ko",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#fcecd9",
+  "theme_color": "#ffc94a",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

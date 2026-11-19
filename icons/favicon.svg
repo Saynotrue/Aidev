@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- 받을지도 아이콘: 노란 바탕 + 펼친 지도 + 위치 핀 -->
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="#FFC94A"/>
+  <g stroke="#1B1B1F" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M10 22 23 18l12 4 13-4v26l-13 4-12-4-13 4z" fill="#FFFBF2"/>
+    <path d="M10 22 23 18v26l-13 4z" fill="#FFD3DF"/>
+    <path d="M23 18l12 4v26l-12-4z" fill="#BDEFE6"/>
+    <path d="M44 37c-8-9-8-23 0-23s8 14 0 23z" fill="#FF6F91"/>
+    <circle cx="44" cy="24" r="3.6" fill="#FFFBF2" stroke-width="2.6"/>
+  </g>
+</svg>
