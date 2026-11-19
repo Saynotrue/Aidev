@@ -34,6 +34,7 @@ npm run collect -- --max-pages 1        # 정부24 API 1페이지만 (테스트�
 
 - 마감된 항목은 저장 단계에서 빠지고, 브라우저에서도 한 번 더 거릅니다.
 - LLM 구조화 결과는 `data/cache/structured.json`에 캐시되어, 원문이 바뀐 항목만 다시 호출합니다.
+- 전공 계열 제한(인문·사회 / 이공계 / 예체능 / 의약·보건)은 전공 관련 단어가 있는 공고(약 300건)만 LLM으로 따로 판단합니다 ([scripts/lib/majors.js](scripts/lib/majors.js), 캐시 `data/cache/majors.json`). 여러 장학 종류 중 일부만 전공 조건이면 제한 없음으로 봅니다.
 - 정부24 API의 **엔드포인트·필드명·지원조건 코드**는 공개 명세 기준으로 넣어 두었습니다. 활용신청 후 공식 명세서와 대조해 [scripts/lib/gov24.js](scripts/lib/gov24.js)의 `FIELD`, `COND` 상수를 확인하세요.
 
 ### 매일 자동 수집 (GitHub Actions)

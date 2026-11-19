@@ -19,6 +19,7 @@ import { fetchAll, toBenefit, isYouthRelevant, FIELD } from './lib/gov24.js';
 import { scholarshipToBenefit, nationalToBenefit } from './lib/kosaf.js';
 import { dedupe } from './lib/normalize.js';
 import { structureAll } from './lib/structure.js';
+import { addMajors } from './lib/majors.js';
 import { todayString, isClosed } from '../js/filter.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -128,6 +129,8 @@ async function main() {
     });
     // 구조화로 마감일이 새로 확인된 항목을 다시 거른다
     benefits = benefits.filter((b) => !isClosed(b, today));
+    log('전공 계열 조건…');
+    benefits = await addMajors(benefits, { root: ROOT, concurrency: Number(opt.concurrency) || 2, log });
   }
 
   const bySource = benefits.reduce((acc, b) => ({ ...acc, [b.source]: (acc[b.source] || 0) + 1 }), {});

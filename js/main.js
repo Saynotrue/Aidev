@@ -106,6 +106,7 @@ function readProfile() {
     sigungu: f.sigungu.value,
     student_status: f.student_status.value,
     grade: num(f.grade.value),
+    major: f.major.value || '모름',
     gpa: Number.isFinite(gpa) && gpa >= 0 && gpa <= 4.5 ? gpa : null,
     income_band: num(f.income_band.value),
     household: checked('household'),
@@ -122,6 +123,7 @@ function fillForm(p) {
   }
   if (p.student_status && p.student_status !== '모름') f.student_status.value = p.student_status;
   if (p.grade != null) f.grade.value = String(p.grade);
+  if (p.major && p.major !== '모름') f.major.value = p.major;
   if (p.gpa != null) f.gpa.value = p.gpa;
   if (p.income_band != null) f.income_band.value = String(p.income_band);
   for (const input of f.querySelectorAll('input[name="household"]')) {

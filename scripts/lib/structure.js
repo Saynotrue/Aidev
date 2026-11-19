@@ -84,7 +84,7 @@ export function mergeStructured(benefit, s) {
  * 분당 호출 수 제한: NVIDIA 무료 API는 분당 약 40회를 넘기면 429를 돌려준다.
  * 호출 시작 간격을 60초/rpm 이상으로 벌린다. (NVIDIA_RPM 환경 변수로 조절, 기본 35)
  */
-function rateLimiter(rpm) {
+export function rateLimiter(rpm) {
   const gap = 60000 / rpm;
   let nextAt = 0;
   return async () => {
@@ -95,7 +95,7 @@ function rateLimiter(rpm) {
   };
 }
 
-async function pool(items, size, fn) {
+export async function pool(items, size, fn) {
   const results = new Array(items.length);
   let next = 0;
   const workers = Array.from({ length: Math.min(size, items.length) }, async () => {

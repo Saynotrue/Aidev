@@ -56,6 +56,14 @@ jobs:
           key: llm-structured-${{ github.run_id }}
           restore-keys: llm-structured-
 
+      # 전공 계열 판단 결과 캐시 (경로가 다르면 캐시 버전이 달라지므로 구조화 캐시와 따로 둔다)
+      - name: 전공 계열 캐시 불러오기
+        uses: actions/cache/restore@v4
+        with:
+          path: data/cache/majors.json
+          key: llm-majors-${{ github.run_id }}
+          restore-keys: llm-majors-
+
       - name: 데이터 수집
         env:
           DATA_GO_KR_SERVICE_KEY: ${{ secrets.DATA_GO_KR_SERVICE_KEY }}
@@ -98,6 +106,13 @@ jobs:
         with:
           path: data/cache/structured.json
           key: llm-structured-${{ github.run_id }}
+
+      - name: 전공 계열 캐시 저장
+        if: always() && hashFiles('data/cache/majors.json') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: data/cache/majors.json
+          key: llm-majors-${{ github.run_id }}
 
       - name: 변경 사항 커밋·푸시
         id: commit

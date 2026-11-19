@@ -98,6 +98,7 @@ export function emptyConditions() {
     min_gpa: null,
     income: { max_median_pct: null, max_band: null, text: null },
     household: [],
+    majors: [], // 이 전공 계열 학생만 (비어 있으면 전공 무관). scripts/lib/majors.js
     target_groups: [], // 이 중 하나에 해당해야 함 (예: 대학생·대학원생, 구직자·실업자)
     household_groups: [], // 이 중 하나에 해당하는 가구 (예: 1인 가구, 무주택세대)
   };

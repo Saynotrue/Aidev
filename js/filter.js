@@ -6,12 +6,14 @@ import { parseRegion } from './regions.js';
 export const CATEGORIES = ['생활', '주거', '취업', '금융', '교육·장학금'];
 export const STUDENT_STATUSES = ['재학', '휴학', '졸업', '해당 없음'];
 export const HOUSEHOLD_OPTIONS = ['1인 가구', '월세 거주', '무주택', '구직 중', '다자녀'];
+// 전공 계열. 이공계 = 자연과학·공학 (농림·수산 등 자연계 포함)
+export const MAJOR_FIELDS = ['인문·사회', '이공계', '예체능', '의약·보건'];
 
 export const STATUS = { OK: 'ok', CHECK: 'check', FAIL: 'fail' };
 export const STATUS_LABEL = { ok: '충족', check: '확인 필요', fail: '미충족' }; // 아이콘은 화면(main.js)에서 붙인다
 
 // R-1: 이 조건이 '미충족'이면 결과에서 제외한다. 나머지 조건은 표시만 한다.
-export const HARD_FILTER_KEYS = ['deadline', 'age', 'region', 'student_status'];
+export const HARD_FILTER_KEYS = ['deadline', 'age', 'region', 'student_status', 'major'];
 
 // 학자금 지원구간 표시용 (0 = 기초·차상위). 값은 한국장학재단 공지 기준으로 확인할 것.
 export const INCOME_BANDS = [
@@ -119,6 +121,16 @@ function checkGrade(p, c) {
     : check('grade', '학년', STATUS.FAIL, `${names} 대상입니다.`);
 }
 
+function checkMajor(p, c) {
+  const req = c.majors || [];
+  if (req.length === 0) return null; // 전공 무관
+  const names = req.join('·');
+  if (!MAJOR_FIELDS.includes(p.major)) return check('major', '전공 계열', STATUS.CHECK, `${names} 계열 학생 대상입니다. 전공 계열을 입력하지 않았습니다.`);
+  return req.includes(p.major)
+    ? check('major', '전공 계열', STATUS.OK, `${names} 계열 학생 대상이며 조건에 해당합니다.`)
+    : check('major', '전공 계열', STATUS.FAIL, `${names} 계열 학생 대상입니다.`);
+}
+
 function checkGpa(p, c) {
   if (c.min_gpa == null) return null;
   if (p.gpa == null) return check('gpa', '성적', STATUS.CHECK, `직전 학기 학점 ${c.min_gpa} 이상(4.5 만점 환산) 조건이 있습니다.`);
@@ -186,6 +198,7 @@ export function evaluate(profile, benefit, today) {
     checkRegion(profile, c),
     checkStudent(profile, c),
     checkGrade(profile, c),
+    checkMajor(profile, c),
     checkGpa(profile, c),
     checkIncome(profile, c),
     checkHousehold(profile, c),
@@ -205,6 +218,8 @@ function profileKeywords(p) {
   if (hh.has('1인 가구')) kw.push('1인');
   if (hh.has('무주택')) kw.push('무주택', '전세');
   if (hh.has('구직 중')) kw.push('구직', '취업', '일자리');
+  const MAJOR_KW = { '인문·사회': ['인문', '사회과학'], 이공계: ['이공', '공학', '자연과학'], 예체능: ['예체능', '예술', '체육'], '의약·보건': ['의약', '간호', '보건'] };
+  if (MAJOR_KW[p.major]) kw.push(...MAJOR_KW[p.major]);
   if (p.sido) kw.push(p.sido);
   if (p.sigungu) kw.push(p.sigungu);
   return [...new Set(kw)];
