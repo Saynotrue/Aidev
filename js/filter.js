@@ -5,7 +5,7 @@ import { parseRegion } from './regions.js';
 
 export const CATEGORIES = ['생활', '주거', '취업', '금융', '교육·장학금'];
 export const STUDENT_STATUSES = ['재학', '휴학', '졸업', '해당 없음'];
-export const HOUSEHOLD_OPTIONS = ['1인 가구', '월세 거주', '무주택', '구직 중'];
+export const HOUSEHOLD_OPTIONS = ['1인 가구', '월세 거주', '무주택', '구직 중', '다자녀'];
 
 export const STATUS = { OK: 'ok', CHECK: 'check', FAIL: 'fail' };
 export const STATUS_LABEL = { ok: '충족', check: '확인 필요', fail: '미충족' }; // 아이콘은 화면(main.js)에서 붙인다
@@ -170,7 +170,8 @@ function checkHouseholdGroups(p, c) {
   const groups = c.household_groups || [];
   if (groups.length === 0) return null;
   const hh = new Set(p.household || []);
-  const hit = (groups.includes('1인 가구') && hh.has('1인 가구')) || (groups.includes('무주택세대') && hh.has('무주택'));
+  const hit = (groups.includes('1인 가구') && hh.has('1인 가구')) || (groups.includes('무주택세대') && hh.has('무주택'))
+    || (groups.includes('다자녀가구') && hh.has('다자녀'));
   return hit
     ? check('household_groups', '가구 특성', STATUS.OK, `${groups.join(', ')} 중 하나에 해당합니다.`)
     : check('household_groups', '가구 특성', STATUS.CHECK, `${groups.join(', ')} 중 하나에 해당해야 합니다.`);
@@ -215,7 +216,8 @@ export function localScore(profile, benefit, checks) {
   for (const c of checks) {
     if (c.key === 'deadline') continue;
     if (c.status === STATUS.OK) score += 3;
-    else if (c.status === STATUS.CHECK) score -= (c.key === 'target' || c.key === 'household_groups') ? 4 : 0.5; // 장애인·임산부 등 특정 대상 전용은 뒤로
+    // 장애인·다자녀 등 특정 대상 전용, 선택하지 않은 가구·상황 조건은 뒤로 (선택하지 않음 = 해당 없음)
+    else if (c.status === STATUS.CHECK) score -= ['target', 'household_groups', 'household'].includes(c.key) ? 4 : 0.5;
     else score -= 4;
   }
   const text = [benefit.name, benefit.summary, benefit.target_text, benefit.criteria_text].join(' ');
@@ -224,6 +226,22 @@ export function localScore(profile, benefit, checks) {
   score += Math.min(hits, 6);
   if ((profile.interests || []).includes(benefit.category)) score += 2;
   return score;
+}
+
+// 특정 대상 전용 조건 (장애인·다자녀 등). 사용자가 고르지 않았으면 해당하지 않는 것으로 본다.
+const SPECIFIC_KEYS = ['target', 'household_groups', 'household'];
+export const FIT_CAP_FAIL = 20; // 미충족 조건이 있을 때 적합도 상한
+export const FIT_CAP_SPECIFIC = 35; // 해당하지 않는 특정 대상 전용 조건이 있을 때 상한
+
+/**
+ * AI 적합도의 상한: AI 점수가 화면의 ✅/⚠️/❌ 판정과 어긋나지 않도록 코드로 강제한다.
+ * - 미충족(❌)이 하나라도 있으면 20
+ * - 특정 대상 전용 조건(장애인·다자녀 등)에 해당한다고 고르지 않았으면 35
+ */
+export function fitCap(checks) {
+  if (checks.some((c) => c.status === STATUS.FAIL)) return FIT_CAP_FAIL;
+  if (checks.some((c) => SPECIFIC_KEYS.includes(c.key) && c.status === STATUS.CHECK)) return FIT_CAP_SPECIFIC;
+  return 100;
 }
 
 // ───────────────────────── 추천 파이프라인 (브라우저 단계) ─────────────────────────
