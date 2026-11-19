@@ -17,6 +17,7 @@
   --fail: #b42318;
   --fail-soft: #fde7e5;
   --urgent: #c0362c;
+  --star: #c98a00;
   --radius: 12px;
   --shadow: 0 1px 3px rgb(20 30 60 / 0.08), 0 4px 16px rgb(20 30 60 / 0.05);
   --font: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", "Malgun Gothic", sans-serif;
@@ -41,6 +42,7 @@
     --fail: #ff8a80;
     --fail-soft: #3d1f1d;
     --urgent: #ff7b70;
+    --star: #ffc94d;
     --shadow: none;
     color-scheme: dark;
   }
@@ -143,6 +145,27 @@ input[type="text"], input[type="number"], select {
 .dday.is-always { background: var(--ok-soft); color: var(--ok); }
 .ai-score { font-size: 0.75rem; font-weight: 700; color: var(--primary); margin-left: 6px; }
 .empty { text-align: center; color: var(--text-muted); padding: 24px 0; }
+
+/* ── 화면 탭 (지원금 찾기 / 즐겨찾기) ── */
+.view-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin: 0 0 16px; }
+.view-tab { font: inherit; font-weight: 600; background: none; color: var(--text-muted); border: 0; border-bottom: 3px solid transparent; padding: 10px 16px; min-height: 44px; cursor: pointer; margin-bottom: -1px; }
+.view-tab[aria-selected="true"] { color: var(--primary); border-bottom-color: var(--primary); }
+.view-tab .count { display: inline-block; min-width: 1.6em; margin-left: 4px; padding: 0 6px; border-radius: 999px; font-size: 0.75rem; background: var(--surface-2); color: var(--text-muted); }
+.view-tab:focus-visible, .star:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
+
+/* ── 즐겨찾기 별 ── */
+.card-item { position: relative; }
+.card-item .card-button { padding-right: 56px; }
+.card-item > .star { position: absolute; top: 8px; right: 8px; z-index: 1; }
+.star {
+  font: inherit; font-size: 1.35rem; line-height: 1; color: var(--text-muted); background: none;
+  border: 0; border-radius: 8px; min-width: 44px; min-height: 44px; padding: 0 8px; cursor: pointer;
+}
+.star:hover { background: var(--surface-2); }
+.star.is-on { color: var(--star); }
+.detail-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.detail-actions .star { font-size: 0.95rem; font-weight: 700; border: 1px solid var(--border); }
+.detail-actions .star span { font-size: 1.2rem; vertical-align: -2px; }
 
 /* ── 상세 다이얼로그 ── */
 dialog {

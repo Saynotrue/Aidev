@@ -2,10 +2,11 @@
 
 import {
   CATEGORIES, HOUSEHOLD_OPTIONS, INCOME_BANDS, STATUS_LABEL,
-  recommend, topCandidates, sortItems, todayString,
+  recommend, topCandidates, sortItems, todayString, evaluate, deadlineInfo,
 } from './filter.js';
 import { SIDO, SIGUNGU } from './regions.js';
 import { ai, aiAvailable } from './ai.js';
+import { favorites } from './favorites.js';
 
 const RERANK_N = 20; // LLM에 보낼 후보 수 (R-2)
 const LOW_SCORE = 30; // AI 적합도가 이보다 낮으면 추천 목록에서 '그 외'로 내린다
@@ -35,6 +36,8 @@ const state = {
   showAll: false,
   runId: 0,
   explainCache: new Map(),
+  view: 'search',
+  favSort: 'deadline',
 };
 
 // ───────────────────────── 초기화 ─────────────────────────
@@ -207,11 +210,93 @@ function ddayBadge(deadline) {
   return h('span', { class: `dday ${cls}` }, deadline.label);
 }
 
+// ───────────────────────── 즐겨찾기 (★) ─────────────────────────
+
+function starButton(id, { withLabel = false } = {}) {
+  const btn = h('button', { type: 'button', class: 'star', 'data-fav-id': id });
+  const paint = () => {
+    const on = favorites.has(id);
+    btn.classList.toggle('is-on', on);
+    btn.setAttribute('aria-pressed', String(on));
+    btn.setAttribute('aria-label', on ? '즐겨찾기 해제' : '즐겨찾기에 추가');
+    btn.title = on ? '즐겨찾기 해제' : '즐겨찾기에 추가';
+    btn.replaceChildren(h('span', { 'aria-hidden': 'true' }, on ? '★' : '☆'));
+    if (withLabel) btn.append(on ? ' 즐겨찾기됨' : ' 즐겨찾기');
+  };
+  btn.paint = paint;
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    try {
+      favorites.toggle(id);
+    } catch (err) {
+      alert(err.message);
+    }
+  });
+  paint();
+  return btn;
+}
+
+/** 즐겨찾기 화면용 항목. 검색 결과에 있으면 AI 점수까지 재사용하고, 없으면 현재 조건으로 새로 평가한다. */
+function favoriteItem(benefit, today) {
+  const found = state.items.find((it) => it.benefit.id === benefit.id);
+  if (found) return found;
+  return {
+    benefit,
+    checks: state.profile ? evaluate(state.profile, benefit, today) : [],
+    score: 0,
+    deadline: deadlineInfo(benefit, today),
+  };
+}
+
+function renderFavorites() {
+  const ids = favorites.list();
+  const byId = new Map(state.benefits.map((b) => [b.id, b]));
+  const today = todayString();
+  const items = ids.filter((id) => byId.has(id)).map((id) => favoriteItem(byId.get(id), today));
+  const missing = ids.length - items.length;
+
+  for (const btn of document.querySelectorAll('[data-fav-sort]')) {
+    btn.classList.toggle('is-active', btn.dataset.favSort === state.favSort);
+  }
+
+  const summary = $('#fav-summary');
+  summary.textContent = ids.length === 0 ? '' : [
+    `즐겨찾기한 지원금 ${items.length}건`,
+    missing ? `현재 데이터에서 찾을 수 없는 ${missing}건(종료·삭제된 공고)` : null,
+    state.profile ? null : '조건을 입력하고 검색하면 내 조건과 비교해 볼 수 있어요',
+  ].filter(Boolean).join(' · ');
+
+  const list = $('#fav-list');
+  const sorted = state.favSort === 'added' ? items : sortItems(items, 'deadline');
+  list.replaceChildren(...(sorted.length
+    ? sorted.map(card)
+    : [h('li', { class: 'empty' }, ids.length ? '즐겨찾기한 지원금을 현재 데이터에서 찾지 못했어요.' : '아직 즐겨찾기한 지원금이 없어요. 카드의 ☆를 눌러 추가해 보세요.')]));
+}
+
+function setView(view) {
+  state.view = view;
+  for (const tab of document.querySelectorAll('[data-view]')) {
+    const on = tab.dataset.view === view;
+    tab.setAttribute('aria-selected', String(on));
+    $(`#${tab.getAttribute('aria-controls')}`).hidden = !on;
+  }
+  if (view === 'favorites') renderFavorites();
+}
+
+function onFavoritesChange() {
+  $('#fav-count').textContent = String(favorites.count());
+  for (const btn of document.querySelectorAll('.star[data-fav-id]')) btn.paint?.();
+  if (state.view === 'favorites') renderFavorites();
+}
+
+// ───────────────────────── 카드 ─────────────────────────
+
 function card(it) {
   const b = it.benefit;
   const counts = { ok: 0, check: 0, fail: 0 };
   for (const c of it.checks) if (c.key !== 'deadline') counts[c.status] += 1;
-  return h('li', {},
+  return h('li', { class: 'card-item' },
+    starButton(b.id),
     h('button', { type: 'button', class: 'card-button', onclick: () => openDetail(it) },
       h('div', { class: 'card-top' },
         h('div', {},
@@ -223,7 +308,7 @@ function card(it) {
       b.amount ? h('p', { class: 'card-amount' }, b.amount) : null,
       it.ai?.reason ? h('p', { class: 'card-reason' }, it.ai.reason) : null,
       h('div', { class: 'card-checks' },
-        h('span', {}, `✅ ${counts.ok}`), h('span', {}, `⚠️ ${counts.check}`), h('span', {}, `❌ ${counts.fail}`),
+        it.checks.length ? [h('span', {}, `✅ ${counts.ok}`), h('span', {}, `⚠️ ${counts.check}`), h('span', {}, `❌ ${counts.fail}`)] : null,
         h('span', {}, '자세히 보기 →'))));
 }
 
@@ -246,8 +331,9 @@ function openDetail(it) {
 
   const explainBox = h('div', { class: 'detail-section' },
     h('h3', {}, '내 조건과 비교'),
-    h('p', { class: 'hint' }, '아래는 입력한 조건으로 자동 판단한 결과입니다.'),
-    condList(it.checks));
+    it.checks.length
+      ? [h('p', { class: 'hint' }, '아래는 입력한 조건으로 자동 판단한 결과입니다.'), condList(it.checks)]
+      : h('p', { class: 'hint' }, '"지원금 찾기" 화면에서 조건을 입력하고 검색하면 내 조건과 비교해 드려요.'));
 
   const askInput = h('input', { type: 'text', maxlength: '300', placeholder: '예: 휴학생도 받을 수 있어?', 'aria-label': '질문' });
   const askAnswer = h('div', { class: 'answer', role: 'status' });
@@ -275,7 +361,7 @@ function openDetail(it) {
     h('span', { class: 'cat' }, b.category),
     h('h2', { id: 'detail-title', class: 'detail-title' }, b.name),
     h('p', { class: 'card-meta' }, `${b.agency || ''} · 수집일 ${b.collected_at || '-'}`),
-    h('p', { class: 'detail-section' }, ddayBadge(it.deadline)),
+    h('div', { class: 'detail-section detail-actions' }, ddayBadge(it.deadline), starButton(b.id, { withLabel: true })),
 
     it.ai?.reason ? h('p', { class: 'card-reason' }, `AI 추천 이유: ${it.ai.reason}`) : null,
     explainBox,
@@ -360,8 +446,15 @@ $('#show-more').addEventListener('click', () => { state.showAll = true; render()
 for (const btn of document.querySelectorAll('[data-sort]')) {
   btn.addEventListener('click', () => { state.sort = btn.dataset.sort; render(); });
 }
+for (const btn of document.querySelectorAll('[data-fav-sort]')) {
+  btn.addEventListener('click', () => { state.favSort = btn.dataset.favSort; renderFavorites(); });
+}
+for (const tab of document.querySelectorAll('[data-view]')) {
+  tab.addEventListener('click', () => setView(tab.dataset.view));
+}
+favorites.onChange(onFavoritesChange);
 const dialog = $('#detail');
 dialog.addEventListener('click', (e) => {
   if (e.target === dialog || e.target.closest('[data-close]')) dialog.close();
 });
-loadData();
+loadData().then(onFavoritesChange);

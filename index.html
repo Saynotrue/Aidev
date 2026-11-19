@@ -21,6 +21,12 @@
   <main class="container">
     <p id="data-banner" class="banner" hidden></p>
 
+    <nav class="view-tabs" role="tablist" aria-label="화면">
+      <button type="button" role="tab" class="view-tab" id="tab-search" data-view="search" aria-controls="view-search" aria-selected="true">지원금 찾기</button>
+      <button type="button" role="tab" class="view-tab" id="tab-favorites" data-view="favorites" aria-controls="view-favorites" aria-selected="false">★ 즐겨찾기 <span id="fav-count" class="count">0</span></button>
+    </nav>
+
+    <div id="view-search" role="tabpanel" aria-labelledby="tab-search">
     <!-- ① 조건 입력 -->
     <section class="panel" aria-labelledby="form-title">
       <h2 id="form-title">내 조건 입력</h2>
@@ -117,6 +123,21 @@
       <ol id="result-list" class="cards"></ol>
       <button id="show-more" type="button" class="btn btn-secondary btn-block" hidden></button>
       <p class="disclaimer">⚠️ 추천과 설명은 수집된 공고 원문을 바탕으로 한 참고 정보입니다. 최종 자격은 공식 페이지에서 확인하세요.</p>
+    </section>
+    </div>
+
+    <!-- ⑤ 즐겨찾기 -->
+    <section id="view-favorites" class="panel" role="tabpanel" aria-labelledby="tab-favorites" hidden>
+      <div class="results-head">
+        <h2>즐겨찾기</h2>
+        <div class="sort" role="group" aria-label="정렬">
+          <button type="button" class="btn-toggle is-active" data-fav-sort="deadline">마감 임박 순</button>
+          <button type="button" class="btn-toggle" data-fav-sort="added">최근 추가 순</button>
+        </div>
+      </div>
+      <p id="fav-summary" class="status" role="status"></p>
+      <ol id="fav-list" class="cards"></ol>
+      <p class="hint">즐겨찾기는 이 브라우저의 쿠키에만 저장되며(1년 유지) 서버에 따로 보관하지 않습니다. 쿠키를 지우면 함께 사라져요.</p>
     </section>
   </main>
 
