@@ -36,6 +36,25 @@ npm run collect -- --max-pages 1        # 정부24 API 1페이지만 (테스트�
 - LLM 구조화 결과는 `data/cache/structured.json`에 캐시되어, 원문이 바뀐 항목만 다시 호출합니다.
 - 정부24 API의 **엔드포인트·필드명·지원조건 코드**는 공개 명세 기준으로 넣어 두었습니다. 활용신청 후 공식 명세서와 대조해 [scripts/lib/gov24.js](scripts/lib/gov24.js)의 `FIELD`, `COND` 상수를 확인하세요.
 
+### 매일 자동 수집 (GitHub Actions)
+
+[.github/workflows/collect.yml](.github/workflows/collect.yml)이 매일 **한국 시간 새벽 4시**에 `npm run collect`를 실행하고, 데이터가 바뀌었으면 `data/benefits.json`을 main에 커밋합니다. Vercel이 Git 연동돼 있으면 이 커밋으로 사이트가 자동 재배포됩니다.
+
+처음 한 번 설정:
+
+1. GitHub 저장소 → **Settings → Secrets and variables → Actions → New repository secret**
+   - `DATA_GO_KR_SERVICE_KEY` (필수)
+   - `NVIDIA_API_KEY` (선택: 없으면 LLM 구조화 없이 수집만)
+   - `VERCEL_DEPLOY_HOOK` (선택: 봇 커밋으로 Vercel 배포가 안 될 때. Vercel 프로젝트 → Settings → Git → Deploy Hooks에서 만든 URL)
+2. **Actions** 탭 → "매일 데이터 수집" → **Run workflow**로 한 번 수동 실행해 확인합니다.
+
+동작 방식:
+
+- LLM 구조화는 하루 **최대 100건**만 새로 호출하고(수동 실행 시 변경 가능), 결과를 Actions 캐시에 보관해 다음 날 이어서 합니다. 원문이 바뀌지 않은 공고는 다시 호출하지 않습니다.
+- 수집 건수가 100건 미만이거나 직전보다 절반 넘게 줄면 **커밋하지 않고 실패**로 끝납니다 (API 장애로 사이트가 비는 것 방지).
+- 수집일만 바뀌고 내용이 같으면 커밋하지 않습니다 (저장소 용량 절약).
+- 장학금 CSV(`csv/`)는 API가 아니라 파일이라 자동으로 바뀌지 않습니다. 새 CSV를 받으면 `csv/`에 넣어 커밋하세요.
+
 ## 구조
 
 ```

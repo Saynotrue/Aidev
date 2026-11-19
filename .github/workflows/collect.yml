@@ -1,0 +1,120 @@
+# 매일 지원금 데이터를 새로 수집해 data/benefits.json을 커밋한다.
+# 커밋이 main에 올라가면 Vercel이 사이트를 자동으로 다시 배포한다.
+#
+# 필요한 저장소 Secrets (Settings → Secrets and variables → Actions):
+#   DATA_GO_KR_SERVICE_KEY  공공데이터포털 정부24 API 키 (필수)
+#   NVIDIA_API_KEY          LLM 조건 구조화용 (없으면 구조화를 건너뛰고 수집만 함)
+#   VERCEL_DEPLOY_HOOK      (선택) Vercel Deploy Hook URL. 봇 커밋으로 배포가 안 될 때만 등록
+#
+# 수동 실행: Actions 탭 → "매일 데이터 수집" → Run workflow
+
+name: 매일 데이터 수집
+
+on:
+  schedule:
+    - cron: '0 19 * * *' # UTC 19:00 = 한국 시간 새벽 4:00
+  workflow_dispatch:
+    inputs:
+      llm_limit:
+        description: '이번 실행에서 새로 LLM 구조화할 최대 건수 (이미 구조화한 항목은 캐시 재사용)'
+        default: '100'
+      no_llm:
+        description: 'LLM 구조화 없이 수집만 하기'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write # data/benefits.json 커밋·푸시
+
+concurrency:
+  group: collect-data
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      TZ: Asia/Seoul # 수집일·마감 판단을 한국 날짜 기준으로 (todayString은 서버 시간대를 씀)
+      LLM_LIMIT: ${{ inputs.llm_limit || '100' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22 # 외부 패키지가 없어 npm install은 필요 없다
+
+      # LLM 구조화 결과 캐시: 원문이 바뀌지 않은 공고는 다시 호출하지 않는다 (비용 절약).
+      # 실행마다 새 키로 저장하고, 가장 최근 것을 불러온다.
+      - name: LLM 구조화 캐시 불러오기
+        uses: actions/cache/restore@v4
+        with:
+          path: data/cache/structured.json
+          key: llm-structured-${{ github.run_id }}
+          restore-keys: llm-structured-
+
+      - name: 데이터 수집
+        env:
+          DATA_GO_KR_SERVICE_KEY: ${{ secrets.DATA_GO_KR_SERVICE_KEY }}
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+        run: |
+          if [ -z "$DATA_GO_KR_SERVICE_KEY" ]; then
+            echo "::error::저장소 Secrets에 DATA_GO_KR_SERVICE_KEY를 등록하세요."
+            exit 1
+          fi
+          ARGS="--llm-limit $LLM_LIMIT"
+          if [ "${{ inputs.no_llm }}" = "true" ]; then ARGS="--no-llm"; fi
+          npm run collect -- $ARGS
+
+      # API 장애 등으로 데이터가 갑자기 크게 줄면 커밋하지 않는다 (사이트가 비는 것 방지)
+      - name: 수집 결과 점검
+        run: |
+          node --input-type=module -e "
+            import { readFileSync } from 'node:fs';
+            import { execSync } from 'node:child_process';
+            const now = JSON.parse(readFileSync('data/benefits.json', 'utf8'));
+            let prev = null;
+            try { prev = JSON.parse(execSync('git show HEAD:data/benefits.json', { maxBuffer: 1 << 28 })); } catch {}
+            const before = prev?.count || 0;
+            console.log('이전', before, '건 → 이번', now.count, '건', JSON.stringify(now.sources));
+            if (now.count < 100 || (before && now.count < before * 0.5)) {
+              console.error('::error::수집 건수가 비정상적으로 적습니다. 커밋하지 않습니다.');
+              process.exit(1);
+            }
+            // 수집일(generated_at, collected_at)만 바뀌고 내용이 같으면 커밋하지 않는다 (저장소 용량 절약)
+            const strip = (d) => JSON.stringify(d.benefits.map(({ collected_at, ...b }) => b));
+            if (prev && strip(prev) === strip(now)) {
+              console.log('내용 변화 없음 (날짜만 바뀜) → 이전 파일 유지');
+              execSync('git checkout -- data/benefits.json');
+            }
+          "
+
+      - name: LLM 구조화 캐시 저장
+        if: always() && hashFiles('data/cache/structured.json') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: data/cache/structured.json
+          key: llm-structured-${{ github.run_id }}
+
+      - name: 변경 사항 커밋·푸시
+        id: commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/benefits.json
+          if git diff --cached --quiet; then
+            echo "데이터 변경 없음 → 커밋 생략"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git commit -m "chore(data): $(date +%F) 지원금 데이터 자동 수집"
+          git pull --rebase origin "${GITHUB_REF_NAME}" # 그사이 팀원이 푸시했어도 이어서 올린다
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Vercel 재배포 (Deploy Hook이 있을 때만)
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
+        run: |
+          if [ -n "$HOOK" ]; then curl -fsS -X POST "$HOOK" > /dev/null && echo "Vercel 배포 요청 완료"; else echo "Deploy Hook 없음 → Git 연동 자동 배포에 맡김"; fi
