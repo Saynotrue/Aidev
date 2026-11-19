@@ -80,6 +80,21 @@ export function mergeStructured(benefit, s) {
   return out;
 }
 
+/**
+ * 분당 호출 수 제한: NVIDIA 무료 API는 분당 약 40회를 넘기면 429를 돌려준다.
+ * 호출 시작 간격을 60초/rpm 이상으로 벌린다. (NVIDIA_RPM 환경 변수로 조절, 기본 35)
+ */
+function rateLimiter(rpm) {
+  const gap = 60000 / rpm;
+  let nextAt = 0;
+  return async () => {
+    const now = Date.now();
+    const wait = Math.max(0, nextAt - now);
+    nextAt = Math.max(now, nextAt) + gap;
+    if (wait) await new Promise((r) => setTimeout(r, wait));
+  };
+}
+
 async function pool(items, size, fn) {
   const results = new Array(items.length);
   let next = 0;
@@ -105,15 +120,18 @@ export async function structureAll(benefits, { root, concurrency = 2, limit = In
   const base = llmConfig();
   const config = { ...base, models: base.collectModels, model: base.collectModels[0] };
   let called = 0; let reused = 0; let failed = 0; let done = 0;
+  const rpm = Number(process.env.NVIDIA_RPM) || 35;
+  const throttle = rateLimiter(rpm);
   const t0 = Date.now();
   const todo = benefits.filter((b) => cache[b.id]?.key !== hash(`${PROMPT_VERSION}|${config.model}|${userPrompt(b)}`)).length;
-  log(`  캐시 재사용 가능 ${benefits.length - todo}건, 새로 구조화할 대상 ${todo}건 중 이번에 최대 ${Number.isFinite(limit) ? limit : todo}건 호출 (동시 ${concurrency}건)`);
+  log(`  캐시 재사용 가능 ${benefits.length - todo}건, 새로 구조화할 대상 ${todo}건 중 이번에 최대 ${Number.isFinite(limit) ? limit : todo}건 호출 (동시 ${concurrency}건, 분당 최대 ${rpm}회)`);
   const out = await pool(benefits, concurrency, async (b, i) => {
     const key = hash(`${PROMPT_VERSION}|${config.model}|${userPrompt(b)}`);
     if (cache[b.id]?.key === key) { reused += 1; return mergeStructured(b, cache[b.id].data); }
     if (called >= limit) return { ...b, structured: false };
     called += 1;
     try {
+      await throttle();
       const data = await callLlmJson({
         config, system: SYSTEM, user: userPrompt(b), schema: SCHEMA,
       });
