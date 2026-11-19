@@ -58,7 +58,9 @@ async function loadData() {
       const raw = await res.json();
       state.benefits = Array.isArray(raw) ? raw : raw.benefits;
       $('#stat-total').textContent = state.benefits.length.toLocaleString('ko-KR');
-      $('#data-date').textContent = raw.generated_at ? `수집일 ${raw.generated_at}` : '';
+      $('#data-date').textContent = raw.generated_at
+        ? `데이터 기준일 ${raw.generated_at} · 공고 ${state.benefits.length.toLocaleString('ko-KR')}건`
+        : '';
       if (isSample) {
         banner.textContent = '지금은 화면 확인용 샘플 데이터를 보여 주고 있습니다. 실제 지원금 정보가 아닙니다. (npm run collect로 data/benefits.json을 만드세요)';
         banner.hidden = false;
@@ -724,6 +726,13 @@ function openForm() {
   $('#nl-text').focus();
 }
 for (const btn of document.querySelectorAll('[data-goto-form]')) btn.addEventListener('click', openForm);
+// 푸터의 서비스 링크: 해당 탭으로 이동
+for (const btn of document.querySelectorAll('[data-footer-view]')) {
+  btn.addEventListener('click', () => {
+    document.getElementById(`tab-${btn.dataset.footerView}`)?.click();
+    window.scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  });
+}
 // 팝업 바깥(배경) 클릭 또는 × 버튼으로 닫기
 for (const dlg of [$('#detail'), formDialog]) {
   dlg.addEventListener('click', (e) => {

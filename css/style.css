@@ -188,7 +188,6 @@ body {
 ::view-transition-old(root), ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
 /* View Transitions 미지원 브라우저용: 색이 부드럽게 바뀐다 */
 html.theme-fading, html.theme-fading * { transition: background-color 0.45s ease, color 0.45s ease, border-color 0.45s ease, box-shadow 0.45s ease !important; }
-.site-footer p { margin: 4px 0; }
 
 /* ── 히어로 ── */
 /* 첫 화면: 상단 바를 뺀 화면 높이를 꽉 채우고, 아래 요소는 스크롤하면 등장 */
@@ -822,3 +821,46 @@ dialog::backdrop { background: rgb(40 24 10 / 0.45); backdrop-filter: blur(3px);
   .cond { padding: 14px 16px; }
 }
 #detail .disclaimer { margin-top: 32px; }
+
+/* ── 푸터 ── */
+.site-footer { display: block; margin-top: 72px; padding-top: 0; padding-bottom: 32px; font-size: 0.88rem; }
+.footer-top {
+  display: grid; grid-template-columns: 1.4fr 1fr 1fr 1.3fr; gap: 40px;
+  background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); padding: 40px 44px;
+}
+.footer-logo { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); font-size: 1.25rem; font-weight: 800; letter-spacing: -0.03em; }
+.footer-logo .logo-mark { width: 36px; height: 36px; }
+.footer-tagline { margin: 14px 0 0; color: var(--text-muted); line-height: 1.65; }
+.footer-stat { margin: 16px 0 0; }
+.footer-stat span { display: inline-block; padding: 6px 12px; border-radius: 999px; background: var(--accent-soft); color: var(--accent-text); font-size: 0.78rem; font-weight: 700; }
+.footer-col h2 { margin: 4px 0 14px; font-size: 0.9rem; font-weight: 800; color: var(--text); }
+.footer-col ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.footer-col a, .footer-col li button {
+  font: inherit; color: var(--text-muted); text-decoration: none; background: none; border: 0; padding: 0; cursor: pointer;
+  transition: color 0.2s;
+}
+.footer-col a:hover, .footer-col li button:hover { color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
+.footer-col a:focus-visible, .footer-col li button:focus-visible, .footer-details summary:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; border-radius: 4px; }
+.footer-note { margin: 16px 0 0; font-size: 0.8rem; line-height: 1.6; color: var(--text-muted); }
+.footer-details { border-bottom: 1px solid var(--border); }
+.footer-details:first-of-type { border-top: 1px solid var(--border); }
+.footer-details summary {
+  list-style: none; cursor: pointer; padding: 10px 0; color: var(--text-muted); font-weight: 600;
+  display: flex; justify-content: space-between; align-items: center; gap: 8px;
+}
+.footer-details summary::-webkit-details-marker { display: none; }
+.footer-details summary::after { content: "+"; font-size: 1.1rem; font-weight: 500; transition: transform 0.25s; }
+.footer-details[open] summary { color: var(--text); }
+.footer-details[open] summary::after { transform: rotate(45deg); }
+.footer-details p { margin: 0 0 12px; font-size: 0.8rem; line-height: 1.65; color: var(--text-muted); }
+.footer-bottom { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; padding: 22px 8px 0; }
+.footer-copy { margin: 0; color: var(--text-muted); font-size: 0.8rem; }
+@media (max-width: 960px) {
+  .footer-top { grid-template-columns: 1fr 1fr; gap: 32px; padding: 32px; }
+  .footer-brand { grid-column: 1 / -1; }
+}
+@media (max-width: 560px) {
+  .site-footer { margin-top: 48px; }
+  .footer-top { grid-template-columns: 1fr; gap: 28px; padding: 28px 22px; }
+  .footer-bottom { flex-direction: column-reverse; align-items: flex-start; }
+}
