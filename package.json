@@ -1,0 +1,15 @@
+{
+  "name": "hyetaek-radar",
+  "version": "0.1.0",
+  "private": true,
+  "description": "혜택레이더(가칭): AI 기반 청년·대학생 맞춤 정부지원금 추천 서비스",
+  "type": "module",
+  "engines": { "node": ">=20.12" },
+  "scripts": {
+    "collect": "node scripts/collect.js",
+    "dev": "node scripts/dev-server.js",
+    "sample": "node scripts/make-sample.js",
+    "check-models": "node scripts/check-models.js",
+    "test": "node --test"
+  }
+}

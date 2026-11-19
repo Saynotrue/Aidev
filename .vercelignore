@@ -1,0 +1,6 @@
+scripts/
+tests/
+data/raw/
+data/cache/
+prd.md
+csv/
