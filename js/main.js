@@ -59,7 +59,7 @@ async function loadData() {
       state.benefits = Array.isArray(raw) ? raw : raw.benefits;
       $('#stat-total').textContent = state.benefits.length.toLocaleString('ko-KR');
       $('#data-date').textContent = raw.generated_at
-        ? `데이터 기준일 ${raw.generated_at} · 공고 ${state.benefits.length.toLocaleString('ko-KR')}건`
+        ? `${raw.generated_at} 기준 · 공고 ${state.benefits.length.toLocaleString('ko-KR')}건`
         : '';
       if (isSample) {
         banner.textContent = '지금은 화면 확인용 샘플 데이터를 보여 주고 있습니다. 실제 지원금 정보가 아닙니다. (npm run collect로 data/benefits.json을 만드세요)';

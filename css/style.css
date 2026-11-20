@@ -823,7 +823,7 @@ dialog::backdrop { background: rgb(40 24 10 / 0.45); backdrop-filter: blur(3px);
 #detail .disclaimer { margin-top: 32px; }
 
 /* ── 푸터 ── */
-.site-footer { display: block; margin-top: 72px; padding-top: 0; padding-bottom: 32px; font-size: 0.88rem; }
+.site-footer { word-break: keep-all; overflow-wrap: break-word; display: block; margin-top: 72px; padding-top: 0; padding-bottom: 32px; font-size: 0.88rem; }
 .footer-top {
   display: grid; grid-template-columns: 1.4fr 1fr 1fr 1.3fr; gap: 40px;
   background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); padding: 40px 44px;
@@ -832,7 +832,7 @@ dialog::backdrop { background: rgb(40 24 10 / 0.45); backdrop-filter: blur(3px);
 .footer-logo .logo-mark { width: 36px; height: 36px; }
 .footer-tagline { margin: 14px 0 0; color: var(--text-muted); line-height: 1.65; }
 .footer-stat { margin: 16px 0 0; }
-.footer-stat span { display: inline-block; padding: 6px 12px; border-radius: 999px; background: var(--accent-soft); color: var(--accent-text); font-size: 0.78rem; font-weight: 700; }
+.footer-stat span { display: inline-block; white-space: nowrap; padding: 6px 12px; border-radius: 999px; background: var(--accent-soft); color: var(--accent-text); font-size: 0.78rem; font-weight: 700; }
 .footer-col h2 { margin: 4px 0 14px; font-size: 0.9rem; font-weight: 800; color: var(--text); }
 .footer-col ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 .footer-col a, .footer-col li button {
@@ -863,4 +863,7 @@ dialog::backdrop { background: rgb(40 24 10 / 0.45); backdrop-filter: blur(3px);
   .site-footer { margin-top: 48px; }
   .footer-top { grid-template-columns: 1fr; gap: 28px; padding: 28px 22px; }
   .footer-bottom { flex-direction: column-reverse; align-items: flex-start; }
+  .footer-copy span { display: block; }
+  .footer-copy .footer-copy-sep { display: none; }
+  .footer-copy { line-height: 1.6; }
 }
