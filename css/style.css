@@ -263,6 +263,7 @@ html.theme-fading, html.theme-fading * { transition: background-color 0.45s ease
 }
 .panel h2 { margin: 0 0 18px; font-size: 1.35rem; font-weight: 800; letter-spacing: -0.03em; }
 .hint { font-size: 0.85rem; color: var(--text-muted); margin: 8px 0; }
+.label-hint { font-weight: 400; font-size: 0.8rem; color: var(--text-muted); }
 .status { font-size: 0.9rem; color: var(--text-muted); margin: 8px 0; min-height: 1.2em; }
 .status.is-error { color: var(--fail); }
 .banner { background: var(--warn-soft); color: var(--warn); border-radius: var(--radius-sm); padding: 12px 18px; font-size: 0.9rem; margin: 12px 0 0; }
@@ -287,9 +288,9 @@ html.theme-fading, html.theme-fading * { transition: background-color 0.45s ease
 /* ── 폼 ── */
 .nl-box { background: var(--accent-soft); border-radius: var(--radius-sm); padding: 16px 18px; margin-bottom: 24px; }
 .nl-box > label { font-weight: 800; font-size: 0.98rem; }
-.nl-row { display: flex; gap: 8px; margin-top: 8px; }
+.nl-row { display: flex; gap: 8px; margin-top: 10px; }
 .nl-row input { flex: 1; min-width: 0; }
-.nl-box .hint { margin: 8px 0 0; }
+.nl-box .hint { margin: 14px 0 0; } /* 입력칸 포커스 테두리(3px + 간격 2px)와 겹치지 않도록 */
 .nl-box .status { margin: 4px 0 0; min-height: 0; }
 
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px 16px; }
@@ -442,7 +443,7 @@ dialog::backdrop { background: rgb(40 24 10 / 0.45); backdrop-filter: blur(3px);
   .logo { font-size: 1.02rem; }
   .view-tab { padding: 8px 10px; font-size: 0.9rem; }
   .panel { padding: 20px 16px; border-radius: 22px; }
-  .nl-row, .ask-row { flex-direction: column; }
+  .nl-row, .ask-row { flex-direction: column; gap: 12px; } /* 세로로 쌓일 때 포커스 테두리와 버튼이 붙지 않게 */
   .kv { grid-template-columns: 1fr; }
   .kv dt { margin-top: 6px; }
   .detail-inner { padding: 20px 16px; }
@@ -450,7 +451,7 @@ dialog::backdrop { background: rgb(40 24 10 / 0.45); backdrop-filter: blur(3px);
 }
 
 /* ══════════════════════ 기능 소개 로드맵 ══════════════════════ */
-.roadmap { padding: 72px 0 32px; }
+.roadmap { padding: 72px 0 32px; overflow-x: clip; } /* 카드가 옆에서 밀려 들어오는 동안 화면 밖으로 삐져나가 가로 스크롤이 생기지 않게 */
 .roadmap-head { text-align: center; margin-bottom: 48px; }
 .eyebrow { margin: 0 0 6px; font-size: 0.8rem; font-weight: 800; letter-spacing: 0.18em; color: var(--accent-text); }
 .section-title { margin: 0; font-size: clamp(1.7rem, 3.6vw, 2.4rem); font-weight: 800; letter-spacing: -0.045em; }
@@ -866,4 +867,36 @@ dialog::backdrop { background: rgb(40 24 10 / 0.45); backdrop-filter: blur(3px);
   .footer-copy span { display: block; }
   .footer-copy .footer-copy-sep { display: none; }
   .footer-copy { line-height: 1.6; }
+}
+
+/* ── 조건 입력: 학교 소재지 안내 줄, 접히는 추가 조건 ── */
+.field-note { margin: 2px 0 0; font-size: 0.82rem; color: var(--text-muted); }
+.field-note .link-btn { font: inherit; font-weight: 700; color: var(--accent-text); background: none; border: 0; padding: 0 2px; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.field-note.is-warn { color: var(--accent-text); }
+
+.more-conditions { border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 0 16px; margin: 4px 0 16px; }
+.more-conditions > summary {
+  list-style: none; cursor: pointer; padding: 14px 0; font-weight: 800; font-size: 0.95rem;
+  display: flex; align-items: center; gap: 6px; min-height: 44px;
+}
+.more-conditions > summary::-webkit-details-marker { display: none; }
+.more-conditions > summary::before { content: "+"; font-size: 1.1rem; width: 1.1em; text-align: center; transition: transform 0.15s; }
+.more-conditions[open] > summary::before { content: "−"; }
+.more-conditions > summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+.more-conditions[open] { padding-bottom: 4px; }
+.more-conditions > .hint { margin: 0 0 14px; }
+.more-count { margin-left: auto; font-size: 0.78rem; font-weight: 700; color: var(--accent-ink); background: var(--accent); border-radius: 999px; padding: 2px 10px; }
+.more-count:empty { display: none; }
+
+/* 모바일: 짧은 칸은 두 개씩 나란히 (대학 이름처럼 긴 칸은 한 줄 전체) */
+@media (max-width: 560px) {
+  #profile-form .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 12px; }
+  #profile-form .field-wide { grid-column: 1 / -1; }
+  /* [나이·학적] / [시·도·시·군·구] 순서로 묶어 시·도와 시·군·구가 같은 줄에 오게 한다 */
+  #profile-form .grid > .field:has(#age) { order: -3; }
+  #profile-form .grid > .field:has(#student_status) { order: -2; }
+  #profile-form .grid > .field:has(#sido), #profile-form .grid > .field:has(#sigungu) { order: -1; }
+  #profile-form .field { margin-bottom: 8px; }
+  #profile-form .field label { font-size: 0.82rem; }
+  #profile-form input[type="text"], #profile-form input[type="number"], #profile-form select { padding-left: 12px; padding-right: 8px; text-overflow: ellipsis; }
 }

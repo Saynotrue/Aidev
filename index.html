@@ -390,7 +390,9 @@
               <option value="모름" selected>모름</option>
             </select>
           </div>
-          <div class="field">
+
+          <!-- 재학·휴학(또는 모름)일 때만 보이는 학교 정보 -->
+          <div class="field" data-student-only>
             <label for="grade">학년</label>
             <select id="grade" name="grade">
               <option value="">모름</option>
@@ -402,7 +404,7 @@
               <option value="6">6학년</option>
             </select>
           </div>
-          <div class="field">
+          <div class="field" data-student-only>
             <label for="major">전공 계열</label>
             <select id="major" name="major">
               <option value="">모름</option>
@@ -412,28 +414,68 @@
               <option value="의약·보건">의약·보건 (간호 포함)</option>
             </select>
           </div>
-          <div class="field">
+          <div class="field field-wide" data-student-only>
+            <label for="univ_name">재학 중인 대학교</label>
+            <input id="univ_name" name="univ_name" type="text" maxlength="40" list="univ-list" autocomplete="off"
+              placeholder="예: 숭실대학교">
+            <datalist id="univ-list"></datalist>
+            <p id="univ-loc" class="field-note" hidden></p>
+          </div>
+          <div class="field" data-student-only>
             <label for="gpa">직전 학기 학점 (4.5 만점)</label>
             <input id="gpa" name="gpa" type="number" min="0" max="4.5" step="0.01" inputmode="decimal"
               placeholder="모르면 비워 두세요">
           </div>
-          <div class="field">
-            <label for="income_band">소득구간 (학자금 지원구간)</label>
-            <select id="income_band" name="income_band">
-              <option value="">모름</option>
+
+          <!-- 대학 소재지: 목록에서 고르면 자동으로 채워지고 숨긴다. 목록에 없을 때·직접 바꿀 때만 보인다 -->
+          <div class="field" data-student-only data-univ-manual hidden>
+            <label for="univ_sido">대학 소재 시·도</label>
+            <select id="univ_sido" name="univ_sido">
+              <option value="">선택 안 함</option>
+            </select>
+          </div>
+          <div class="field" data-student-only data-univ-manual hidden>
+            <label for="univ_sigungu">대학 소재 시·군·구</label>
+            <select id="univ_sigungu" name="univ_sigungu" disabled>
+              <option value="">시·도를 먼저 고르세요</option>
             </select>
           </div>
         </div>
 
-        <fieldset class="field">
-          <legend>가구·상황 (해당하는 것 모두)</legend>
-          <div id="household" class="chips"></div>
-        </fieldset>
+        <details id="more-conditions" class="more-conditions">
+          <summary>추가 조건 <span class="label-hint">(선택)</span> <span id="more-count" class="more-count"></span></summary>
+          <p class="hint">비워 두면 해당 조건은 "확인 필요"로 표시됩니다. 입력할수록 정확해져요.</p>
+          <div class="grid">
+            <div class="field">
+              <label for="home_sido">출신 시·도 <span class="label-hint">(보호자 주소지·출신 고교)</span></label>
+              <select id="home_sido" name="home_sido">
+                <option value="">거주지와 같음</option>
+              </select>
+            </div>
+            <div class="field" id="home-sigungu-field" hidden>
+              <label for="home_sigungu">출신 시·군·구</label>
+              <select id="home_sigungu" name="home_sigungu" disabled>
+                <option value="">시·도를 먼저 고르세요</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="income_band">소득구간 (학자금 지원구간)</label>
+              <select id="income_band" name="income_band">
+                <option value="">모름</option>
+              </select>
+            </div>
+          </div>
 
-        <fieldset class="field">
-          <legend>관심 분야 (선택하지 않으면 전체)</legend>
-          <div id="interests" class="chips"></div>
-        </fieldset>
+          <fieldset class="field">
+            <legend>가구·상황 (해당하는 것 모두)</legend>
+            <div id="household" class="chips"></div>
+          </fieldset>
+
+          <fieldset class="field">
+            <legend>관심 분야 (선택하지 않으면 전체)</legend>
+            <div id="interests" class="chips"></div>
+          </fieldset>
+        </details>
 
         <p class="hint">입력한 조건은 추천에만 쓰이고 저장되지 않습니다. 모르는 항목은 "확인 필요"로 표시됩니다.</p>
         <button type="submit" class="btn btn-accent btn-pill btn-block btn-lg">지원금 찾기 <svg
@@ -514,7 +556,8 @@
     </div>
 
     <div class="footer-bottom">
-      <p class="footer-copy"><span>© 2026 받을지도</span><span class="footer-copy-sep"> · </span><span>숭실대학교 2026-2학기 AI개발과실전 2조 팀 프로젝트</span></p>
+      <p class="footer-copy"><span>© 2026 받을지도</span><span class="footer-copy-sep"> · </span><span>숭실대학교 2026-2학기
+          AI개발과실전 2조 팀 프로젝트</span></p>
       <button type="button" id="theme-toggle" class="theme-toggle">
         <span class="theme-icon" aria-hidden="true"><span class="sun"><svg class="icon icon-sun" aria-hidden="true"
               focusable="false">

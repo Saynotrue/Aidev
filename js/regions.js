@@ -171,3 +171,18 @@ export function normalizeRegion(text) {
   if (!r) return null;
   return r.sigungu ? `${r.sido} ${r.sigungu}` : r.sido;
 }
+
+/**
+ * 지역 조건 목록(['경기', '경기 시흥시' …])과 한 곳(시·도, 시·군·구)을 비교한다.
+ * @returns {'ok' | 'fail' | 'check'}  시·군·구 조건인데 시·군·구를 모르면 'check'
+ */
+export function matchRegionList(regions, sido, sigungu) {
+  const list = (regions || []).map(parseRegion).filter(Boolean);
+  if (list.length === 0) return 'ok';
+  if (!sido) return 'check';
+  const same = list.filter((r) => r.sido === sido);
+  if (same.length === 0) return 'fail';
+  if (same.some((r) => !r.sigungu)) return 'ok';
+  if (!sigungu) return 'check';
+  return same.some((r) => r.sigungu === sigungu) ? 'ok' : 'fail';
+}

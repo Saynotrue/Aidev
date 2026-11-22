@@ -72,8 +72,87 @@ async function loadData() {
   banner.hidden = false;
 }
 
-function fillSigungu(sido, selected = '') {
-  const select = $('#sigungu');
+// ───────────────────────── 대학 목록 (data/universities.json) ─────────────────────────
+
+const universities = new Map(); // label → { name, sido, sigungu }
+
+async function loadUniversities() {
+  try {
+    const res = await fetch('data/universities.json', { cache: 'no-cache' });
+    if (!res.ok) return; // 목록이 없으면 이름만 직접 입력하고 소재지는 직접 고른다
+    const { universities: list = [] } = await res.json();
+    const datalist = $('#univ-list');
+    for (const u of list) {
+      universities.set(u.label, u);
+      datalist.append(h('option', { value: u.label }));
+    }
+    refreshFormState();
+  } catch { /* 자동완성 없이 동작 */ }
+}
+
+/** '고려대학교 (세종 세종시)' 같은 목록 표기에서 학교 이름만 */
+const univNameOf = (label) => String(label || '').replace(/\s*\([^)]*\)\s*$/, '').trim();
+
+function applyUniversity(label) {
+  const u = findUniversity(label);
+  if (!u) return;
+  univManual = false;
+  $('#univ_sido').value = u.sido;
+  fillSigungu(u.sido, u.sigungu, '#univ_sigungu');
+}
+
+const findUniversity = (label) => universities.get(label)
+  || [...universities.values()].find((x) => x.name === univNameOf(label));
+
+// ───────────────────────── 조건 입력 폼: 필요한 칸만 보이기 ─────────────────────────
+// - 학교 정보(학년·전공·대학·학점)는 재학·휴학·모름일 때만
+// - 대학 소재지는 목록에서 학교를 고르면 자동으로 채우고 한 줄로만 보여 준다 (목록에 없거나 '직접 선택'일 때만 칸을 연다)
+// - 출신 시·군·구는 출신 시·도를 고른 뒤에만
+// - 출신 지역·소득·가구·관심 분야는 '추가 조건'으로 접고, 입력한 개수를 표시한다
+
+const isStudentish = (status) => status === '재학' || status === '휴학' || status === '모름';
+let univManual = false; // '직접 선택'을 눌렀는지
+
+function refreshFormState() {
+  const f = $('#profile-form');
+  const student = isStudentish(f.student_status.value);
+  for (const el of document.querySelectorAll('[data-student-only]')) el.hidden = !student;
+
+  // 대학 소재지
+  const name = f.univ_name.value.trim();
+  const known = name ? findUniversity(name) : null;
+  const showManual = student && name !== '' && (univManual || !known);
+  for (const el of document.querySelectorAll('[data-univ-manual]')) el.hidden = !showManual;
+  const note = $('#univ-loc');
+  note.classList.remove('is-warn');
+  if (!student || !name) {
+    note.hidden = true;
+  } else if (known && !univManual) {
+    const where = `${f.univ_sido.value} ${f.univ_sigungu.value}`.trim();
+    note.replaceChildren(`소재지: ${where} · `, h('button', {
+      type: 'button', class: 'link-btn',
+      onclick: () => { univManual = true; refreshFormState(); f.univ_sido.focus(); },
+    }, '직접 선택'));
+    note.hidden = false;
+  } else if (!known && universities.size > 0) {
+    note.textContent = '목록에 없는 학교예요. 아래에서 대학 소재지를 골라 주세요.';
+    note.classList.add('is-warn');
+    note.hidden = false;
+  } else {
+    note.hidden = true;
+  }
+
+  // 출신 시·군·구
+  $('#home-sigungu-field').hidden = !f.home_sido.value;
+
+  // 추가 조건 입력 개수
+  const extra = [f.home_sido.value, f.income_band.value].filter(Boolean).length
+    + f.querySelectorAll('#more-conditions input[type="checkbox"]:checked').length;
+  $('#more-count').textContent = extra ? `${extra}개 입력됨` : '';
+}
+
+function fillSigungu(sido, selected = '', selectId = '#sigungu') {
+  const select = $(selectId);
   const list = SIGUNGU[sido] || [];
   select.replaceChildren(
     h('option', { value: '' }, !sido ? '시·도를 먼저 고르세요' : list.length ? '선택 안 함' : '해당 없음'),
@@ -87,11 +166,31 @@ function buildForm() {
   const sido = $('#sido');
   for (const s of SIDO) sido.append(h('option', { value: s }, s));
   sido.addEventListener('change', () => fillSigungu(sido.value));
+  for (const [sidoId, sigunguId] of [['#univ_sido', '#univ_sigungu'], ['#home_sido', '#home_sigungu']]) {
+    const sel = $(sidoId);
+    for (const s of SIDO) sel.append(h('option', { value: s }, s));
+    sel.addEventListener('change', () => fillSigungu(sel.value, '', sigunguId));
+  }
+  // 대학 이름을 목록에서 고르면 소재지를 자동으로 채운다
+  const univInput = $('#univ_name');
+  const onUniv = () => {
+    if (!univInput.value.trim()) { // 지우면 소재지도 비운다
+      $('#univ_sido').value = '';
+      fillSigungu('', '', '#univ_sigungu');
+      univManual = false;
+    } else applyUniversity(univInput.value);
+    refreshFormState();
+  };
+  univInput.addEventListener('change', onUniv);
+  univInput.addEventListener('input', () => { if (findUniversity(univInput.value) || !univInput.value.trim()) onUniv(); else refreshFormState(); });
+  // 학적·출신 지역·추가 조건이 바뀌면 보이는 칸과 개수를 다시 계산한다
+  $('#profile-form').addEventListener('change', refreshFormState);
   const income = $('#income_band');
   for (const b of INCOME_BANDS) income.append(h('option', { value: String(b.band) }, b.label));
   const chip = (name, value) => h('label', { class: 'chip' }, h('input', { type: 'checkbox', name, value }), h('span', {}, value));
   $('#household').append(...HOUSEHOLD_OPTIONS.map((v) => chip('household', v)));
   $('#interests').append(...CATEGORIES.map((v) => chip('interests', v)));
+  refreshFormState();
 }
 
 function readProfile() {
@@ -100,14 +199,20 @@ function readProfile() {
   const checked = (name) => [...f.querySelectorAll(`input[name="${name}"]:checked`)].map((i) => i.value);
   const age = num(f.age.value);
   const gpa = num(f.gpa.value);
+  const student = isStudentish(f.student_status.value); // 졸업·해당 없음이면 숨겨진 학교 칸 값은 버린다
   return {
     age: Number.isFinite(age) && age >= 0 && age <= 120 ? Math.floor(age) : null,
     sido: f.sido.value,
     sigungu: f.sigungu.value,
     student_status: f.student_status.value,
-    grade: num(f.grade.value),
-    major: f.major.value || '모름',
-    gpa: Number.isFinite(gpa) && gpa >= 0 && gpa <= 4.5 ? gpa : null,
+    grade: student ? num(f.grade.value) : null,
+    major: (student && f.major.value) || '모름',
+    univ_name: student ? univNameOf(f.univ_name.value) : '',
+    univ_sido: student ? f.univ_sido.value : '',
+    univ_sigungu: student ? f.univ_sigungu.value : '',
+    home_sido: f.home_sido.value,
+    home_sigungu: f.home_sigungu.value,
+    gpa: student && Number.isFinite(gpa) && gpa >= 0 && gpa <= 4.5 ? gpa : null,
     income_band: num(f.income_band.value),
     household: checked('household'),
     interests: checked('interests'),
@@ -124,11 +229,25 @@ function fillForm(p) {
   if (p.student_status && p.student_status !== '모름') f.student_status.value = p.student_status;
   if (p.grade != null) f.grade.value = String(p.grade);
   if (p.major && p.major !== '모름') f.major.value = p.major;
+  if (p.univ_name) {
+    f.univ_name.value = p.univ_name;
+    applyUniversity(p.univ_name);
+  }
+  if (p.univ_sido && !f.univ_sido.value) {
+    f.univ_sido.value = p.univ_sido;
+    fillSigungu(p.univ_sido, p.univ_sigungu, '#univ_sigungu');
+  }
+  if (p.home_sido) {
+    f.home_sido.value = p.home_sido;
+    fillSigungu(p.home_sido, p.home_sigungu, '#home_sigungu');
+  }
   if (p.gpa != null) f.gpa.value = p.gpa;
   if (p.income_band != null) f.income_band.value = String(p.income_band);
   for (const input of f.querySelectorAll('input[name="household"]')) {
     if ((p.household || []).includes(input.value)) input.checked = true;
   }
+  if (p.home_sido || p.income_band != null || (p.household || []).length) $('#more-conditions').open = true;
+  refreshFormState();
 }
 
 // ───────────────────────── 추천 ─────────────────────────
@@ -744,6 +863,7 @@ for (const dlg of [$('#detail'), formDialog]) {
 initMotion();
 initTheme();
 loadData().then(onFavoritesChange);
+loadUniversities();
 
 // ───────────────────────── 테마 전환 ─────────────────────────
 
@@ -848,7 +968,9 @@ function initMotion() {
       for (const e of entries) {
         if (e.isIntersecting) { e.target.classList.add('is-visible'); io.unobserve(e.target); }
       }
-    }, { threshold: 0.2, rootMargin: '0px 0px -40px 0px' });
+    // threshold는 0으로 둔다: 비율(예: 0.2)로 하면 화면보다 5배 넘게 긴 요소(모바일의 결과 목록)는
+    // 그 비율이 한 번에 화면에 들어올 수 없어 끝내 나타나지 않는다. 대신 아래쪽 80px 안으로 들어오면 나타난다.
+    }, { threshold: 0, rootMargin: '0px 0px -80px 0px' });
     for (const el of reveals) io.observe(el);
   } else {
     for (const el of reveals) el.classList.add('is-visible');

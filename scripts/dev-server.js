@@ -24,7 +24,7 @@ const MIME = {
   '.webmanifest': 'application/manifest+json; charset=utf-8',
 };
 // 브라우저에 공개할 경로만 허용한다 (.env, scripts/, lib/, data/raw 등은 제공하지 않음)
-const PUBLIC = [/^\/index\.html$/, /^\/css\/[\w.-]+\.css$/, /^\/js\/[\w.-]+\.js$/, /^\/data\/benefits(\.sample)?\.json$/,
+const PUBLIC = [/^\/index\.html$/, /^\/css\/[\w.-]+\.css$/, /^\/js\/[\w.-]+\.js$/, /^\/data\/benefits(\.sample)?\.json$/, /^\/data\/universities\.json$/,
   /^\/favicon\.ico$/, /^\/manifest\.webmanifest$/, /^\/icons\/[\w.-]+\.(svg|png)$/];
 
 function send(res, status, body, type = 'application/json; charset=utf-8') {

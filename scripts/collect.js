@@ -20,6 +20,8 @@ import { scholarshipToBenefit, nationalToBenefit } from './lib/kosaf.js';
 import { dedupe } from './lib/normalize.js';
 import { structureAll } from './lib/structure.js';
 import { addMajors } from './lib/majors.js';
+import { addUnivConditions } from './lib/univ-conditions.js';
+import { buildUniversityList } from './lib/univ-list.js';
 import { todayString, isClosed } from '../js/filter.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -104,6 +106,7 @@ function findCsv(pattern) {
 
 async function main() {
   const t0 = Date.now();
+  await buildUniversityList(ROOT, { log });
   let benefits = [];
   if (!opt['skip-gov24']) benefits.push(...await collectGov24());
   benefits.push(...await collectCsv(opt.kosaf || findCsv(/학자금\s*지원\s*정보/), scholarshipToBenefit, '한국장학재단 학자금 지원정보'));
@@ -132,6 +135,15 @@ async function main() {
     log('전공 계열 조건…');
     benefits = await addMajors(benefits, { root: ROOT, concurrency: Number(opt.concurrency) || 2, log });
   }
+
+  // 재학 대학 소재지·특정 대학·보호자 주소 인정 여부 (규칙은 항상, LLM은 키가 있을 때만)
+  log('지역 요건(재학 대학·보호자 주소)…');
+  benefits = await addUnivConditions(benefits, {
+    root: ROOT,
+    llm: !opt['no-llm'] && Boolean(process.env.NVIDIA_API_KEY),
+    concurrency: Number(opt.concurrency) || 2,
+    log,
+  });
 
   const bySource = benefits.reduce((acc, b) => ({ ...acc, [b.source]: (acc[b.source] || 0) + 1 }), {});
   const output = { generated_at: today, count: benefits.length, sources: bySource, benefits };

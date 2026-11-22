@@ -20,6 +20,7 @@ npm run dev               # http://localhost:5173
 1. 공공데이터포털에서 장학금 CSV 2종을 내려받아 `csv/` 폴더에 둡니다. 파일명으로 자동 탐색합니다.
    - 한국장학재단 학자금지원정보(대학생) → 파일명에 `학자금지원정보`
    - 한국장학재단 국가장학금 및 학자금대출 지원 정보 → 파일명에 `국가장학금`
+   - (선택) [전국대학및전문대학정보표준데이터](https://www.data.go.kr/data/15107736/standard.do) → 헤더(`학교명`, `소재지도로명주소`)로 자동 탐색. 있으면 `data/universities.json`을 만들어 '재학 중인 대학교' 자동완성과 대학 소재지 자동 입력이 켜집니다. 없어도 소재지는 직접 고를 수 있습니다.
 2. `.env`에 `DATA_GO_KR_SERVICE_KEY`(공공서비스(혜택) API), `NVIDIA_API_KEY`를 넣습니다.
 3. 실행합니다.
 
@@ -35,6 +36,7 @@ npm run collect -- --max-pages 1        # 정부24 API 1페이지만 (테스트�
 - 마감된 항목은 저장 단계에서 빠지고, 브라우저에서도 한 번 더 거릅니다.
 - LLM 구조화 결과는 `data/cache/structured.json`에 캐시되어, 원문이 바뀐 항목만 다시 호출합니다.
 - 전공 계열 제한(인문·사회 / 이공계 / 예체능 / 의약·보건)은 전공 관련 단어가 있는 공고(약 300건)만 LLM으로 따로 판단합니다 ([scripts/lib/majors.js](scripts/lib/majors.js), 캐시 `data/cache/majors.json`). 여러 장학 종류 중 일부만 전공 조건이면 제한 없음으로 봅니다.
+- 지역 요건 세분화 ([scripts/lib/univ-conditions.js](scripts/lib/univ-conditions.js), 캐시 `data/cache/univ.json`): '관내 대학 재학', 'OO시 소재 대학', 특정 대학 이름 목록, '본인 또는 보호자 주소'·'관내 고교 출신' 인정 여부를 찾습니다. 규칙(정규식)으로 모든 공고에 기본값을 채우고, 대학·출신 관련 표현이 있는 공고(약 60건)만 LLM으로 '거주·대학 조건이 둘 다 필요한지(all) / 하나만 충족하면 되는지(any)'를 판단합니다. 화면에서는 거주지, 출신 지역(보호자 주소지·출신 고교), 재학 대학 소재지를 함께 비교합니다.
 - 정부24 API의 **엔드포인트·필드명·지원조건 코드**는 공개 명세 기준으로 넣어 두었습니다. 활용신청 후 공식 명세서와 대조해 [scripts/lib/gov24.js](scripts/lib/gov24.js)의 `FIELD`, `COND` 상수를 확인하세요.
 
 ### 매일 자동 수집 (GitHub Actions)

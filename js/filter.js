@@ -1,7 +1,7 @@
 // 규칙 필터(R-1), 조건별 충족 판단(E-2의 규칙 기반 버전), 후보 점수(R-2 1단계), D-day(R-4).
 // DOM을 쓰지 않는 순수 함수만 둔다. 브라우저·Node(테스트, LLM 프록시)에서 함께 import한다.
 
-import { parseRegion } from './regions.js';
+import { matchRegionList } from './regions.js';
 
 export const CATEGORIES = ['생활', '주거', '취업', '금융', '교육·장학금'];
 export const STUDENT_STATUSES = ['재학', '휴학', '졸업', '해당 없음'];
@@ -13,7 +13,7 @@ export const STATUS = { OK: 'ok', CHECK: 'check', FAIL: 'fail' };
 export const STATUS_LABEL = { ok: '충족', check: '확인 필요', fail: '미충족' }; // 아이콘은 화면(main.js)에서 붙인다
 
 // R-1: 이 조건이 '미충족'이면 결과에서 제외한다. 나머지 조건은 표시만 한다.
-export const HARD_FILTER_KEYS = ['deadline', 'age', 'region', 'student_status', 'major'];
+export const HARD_FILTER_KEYS = ['deadline', 'age', 'region', 'university', 'student_status', 'major'];
 
 // 학자금 지원구간 표시용 (0 = 기초·차상위). 값은 한국장학재단 공지 기준으로 확인할 것.
 export const INCOME_BANDS = [
@@ -84,19 +84,93 @@ function checkAge(p, c) {
   return check('age', '나이', STATUS.OK, `나이 조건(${range})에 해당합니다.`);
 }
 
+// ───── 지역 요건: 거주지 · 보호자 주소/출신 지역 · 재학 대학 소재지 ─────
+// 지역 장학금은 '본인 또는 보호자 주소', '관내 대학 재학', '관내 고교 출신' 등을 조합한다.
+//   c.regions          거주(주민등록) 지역 조건
+//   c.region_guardian  true면 보호자 주소지·출신 지역(p.home_*)으로도 인정
+//   c.univ_regions     재학 대학 소재지 조건 (예: ['경기 시흥시'])
+//   c.univ_names       특정 대학 재학생만 (예: ['안산대학교', '신안산대학교'])
+//   c.region_logic     'all' = 거주 조건과 대학 조건을 모두 충족 / 'any' = 둘 중 하나만 충족해도 됨
+
+const RANK = { ok: 2, check: 1, fail: 0 };
+const best = (...ss) => ss.filter(Boolean).sort((a, b) => RANK[b] - RANK[a])[0] || STATUS.CHECK;
+
+/** 대학 이름 비교용: '서울대학교', '서울대', '고려대학교 세종캠퍼스' → '서울대', '고려대' */
+export function normalizeUnivName(s) {
+  return String(s || '')
+    .replace(/\(.*?\)/g, '')
+    .replace(/[가-힣]*캠퍼스/g, '')
+    .replace(/\s|본교|분교/g, '')
+    .replace(/대학교$/, '대')
+    .replace(/대학$/, '대');
+}
+
+function residenceStatus(p, c) {
+  const own = matchRegionList(c.regions, p.sido, p.sigungu);
+  if (!c.region_guardian || !p.home_sido) return { status: own, via: '거주지' };
+  const home = matchRegionList(c.regions, p.home_sido, p.home_sigungu);
+  return RANK[home] > RANK[own] ? { status: home, via: '보호자 주소지·출신 지역' } : { status: own, via: '거주지' };
+}
+
+function univStatus(p, c) {
+  const parts = [];
+  if ((c.univ_names || []).length) {
+    if (!p.univ_name) parts.push(STATUS.CHECK);
+    else {
+      const mine = normalizeUnivName(p.univ_name);
+      parts.push(c.univ_names.some((n) => normalizeUnivName(n) === mine) ? STATUS.OK : STATUS.FAIL);
+    }
+  }
+  if ((c.univ_regions || []).length) parts.push(matchRegionList(c.univ_regions, p.univ_sido, p.univ_sigungu));
+  // 대학 이름 목록과 소재지 조건이 함께 있으면 보통 '관내 대학 = 이 학교들'이라 하나만 맞으면 된다
+  return best(...parts);
+}
+
+function describeUniv(c) {
+  const bits = [];
+  if ((c.univ_regions || []).length) bits.push(`${c.univ_regions.join(', ')} 소재 대학`);
+  if ((c.univ_names || []).length) bits.push(c.univ_names.join(', '));
+  return bits.join(' 또는 ');
+}
+
 function checkRegion(p, c) {
-  const regions = (c.regions || []).map(parseRegion).filter(Boolean);
-  if (regions.length === 0) return null; // 전국
-  const names = (c.regions || []).join(', ');
-  if (!p.sido) return check('region', '거주 지역', STATUS.CHECK, `지역 조건(${names})이 있지만 거주 지역을 입력하지 않았습니다.`);
-  const sameSido = regions.filter((r) => r.sido === p.sido);
-  if (sameSido.length === 0) return check('region', '거주 지역', STATUS.FAIL, `${names} 거주자 대상입니다.`);
-  if (sameSido.some((r) => !r.sigungu)) return check('region', '거주 지역', STATUS.OK, `${names} 거주자 대상이며 조건에 해당합니다.`);
-  if (!p.sigungu) return check('region', '거주 지역', STATUS.CHECK, `${names} 거주자 대상입니다. 시·군·구를 확인하세요.`);
-  const hit = sameSido.some((r) => r.sigungu === p.sigungu);
-  return hit
-    ? check('region', '거주 지역', STATUS.OK, `${names} 거주자 대상이며 조건에 해당합니다.`)
-    : check('region', '거주 지역', STATUS.FAIL, `${names} 거주자 대상입니다.`);
+  const hasRes = (c.regions || []).length > 0;
+  const hasUni = (c.univ_regions || []).length > 0 || (c.univ_names || []).length > 0;
+  if (!hasRes && !hasUni) return null; // 전국
+
+  const resNames = (c.regions || []).join(', ');
+  const who = c.region_guardian ? '본인 또는 보호자가' : '';
+  const uniNames = describeUniv(c);
+  const res = hasRes ? residenceStatus(p, c) : null;
+  const uni = hasUni ? univStatus(p, c) : null;
+
+  const resCheck = () => {
+    const base = `${resNames}에 ${who ? `${who} ` : ''}거주하는 사람 대상입니다.`;
+    const reason = {
+      ok: `${base} 입력한 ${res.via}로 해당합니다.`,
+      fail: c.region_guardian ? `${base} 거주지와 출신 지역 모두 해당하지 않습니다.` : base,
+      check: !p.sido ? `${base} 거주 지역을 입력하지 않았습니다.` : `${base} 시·군·구를 확인하세요.`,
+    }[res.status];
+    return check('region', '거주 지역', res.status, reason);
+  };
+  const uniCheck = () => {
+    const base = `${uniNames} 재학생 대상입니다.`;
+    const reason = {
+      ok: `${base} 입력한 대학이 해당합니다.`,
+      fail: `${base} 입력한 대학(${p.univ_name || `${p.univ_sido} ${p.univ_sigungu}`.trim()})은 해당하지 않습니다.`,
+      check: `${base} 재학 중인 대학을 입력하지 않았거나 소재지를 확인해야 합니다.`,
+    }[uni];
+    return check('university', '재학 대학', uni, reason);
+  };
+
+  if (hasRes && hasUni && c.region_logic === 'any') {
+    const status = best(res.status, uni);
+    const reason = `${resNames} 거주 또는 ${uniNames} 재학 중 하나에 해당하면 됩니다. `
+      + (status === STATUS.OK ? (res.status === STATUS.OK ? `입력한 ${res.via}로 해당합니다.` : '재학 대학으로 해당합니다.')
+        : status === STATUS.FAIL ? '거주지와 재학 대학 모두 해당하지 않습니다.' : '거주지나 재학 대학을 확인하세요.');
+    return check('region', '지역 요건', status, reason);
+  }
+  return [hasRes ? resCheck() : null, hasUni ? uniCheck() : null];
 }
 
 function checkStudent(p, c) {
@@ -204,7 +278,7 @@ export function evaluate(profile, benefit, today) {
     checkHousehold(profile, c),
     checkTargets(profile, c),
     checkHouseholdGroups(profile, c),
-  ].filter(Boolean);
+  ].flat().filter(Boolean);
 }
 
 // ───────────────────────── 점수 ─────────────────────────
@@ -222,6 +296,9 @@ function profileKeywords(p) {
   if (MAJOR_KW[p.major]) kw.push(...MAJOR_KW[p.major]);
   if (p.sido) kw.push(p.sido);
   if (p.sigungu) kw.push(p.sigungu);
+  if (p.home_sigungu) kw.push(p.home_sigungu);
+  if (p.univ_sigungu) kw.push(p.univ_sigungu);
+  if (p.univ_name) kw.push(normalizeUnivName(p.univ_name));
   return [...new Set(kw)];
 }
 
